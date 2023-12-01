@@ -90,6 +90,8 @@ class DC(threading.Thread):
 
         #-------------------------------------------------------
         # load ini file
+
+        print (f'workingDir: {WORKING_DIR}DCS/DCS.ini')
         cfg = sc.LoadConfig(WORKING_DIR + "DCS/DCS.ini")
 
         # ===========================================
@@ -221,8 +223,8 @@ class DC(threading.Thread):
         self.connect_to_server_uploader_q()
         
         # gui, cli for local
-        self.connect_to_server_ex()
-        self.connect_to_server_q()
+        #self.connect_to_server_ex()
+        #self.connect_to_server_q()
 
         # 20231026 add on-sky images
         self.onsky_dir = "%s1stOnSky/" % WORKING_DIR
@@ -262,9 +264,12 @@ class DC(threading.Thread):
         
         
     def publish_to_ics_queue(self, msg):
+
+        print(f'publish_to_ics_queue: {msg}')
         if self.producer[ICS] == None:
             return
         
+        print(f'sending: {msg}')
         self.producer[ICS].send_message(self.dcs_q, msg)
         
         msg = "%s -> [ICS]" % msg
@@ -285,6 +290,7 @@ class DC(threading.Thread):
 
     def callback_InstSeq(self, ch, method, properties, body):
         cmd = body.decode()        
+        print(f'callback_InstSeq cmd: {cmd} method: {method} properties: {properties}')
 
         if cmd == CMD_RESTART:
             self.stop = True
@@ -330,6 +336,7 @@ class DC(threading.Thread):
 
     def callback_dt(self, ch, method, properties, body):
         cmd = body.decode()        
+        print(f'callback_dt cmd: {cmd} dt: {dt} method: {method} properties: {properties}')
         self.process_from_ICS(cmd, FROM_DTP)
     
         
@@ -337,6 +344,8 @@ class DC(threading.Thread):
 
         param = cmd.split()
 
+
+        print(f'process_from_ICS cmd: {cmd} param: {param} where: {where} IAM: {IAM}  FROM_ALL: {FROM_ALL}')
         if len(param) < 3:
             return
 
@@ -347,8 +356,10 @@ class DC(threading.Thread):
                 return
             elif where == FROM_INSTSEQ:
                 if (IAM == "DCSH" or IAM == "DCSK") and not (param[1] == IAM or param[1] == FROM_HK or param[1] == FROM_ALL):
+                    print(f'process_from_ICS saleeeee1')
                     return
                 elif IAM == DCSS and not (param[1] == IAM or param[1] == FROM_ALL):
+                    print(f'process_from_ICS saleeeee2')
                     return
             elif where == FROM_OBSAPP:
                 if IAM == DCSS and param[1] != IAM:
@@ -396,7 +407,7 @@ class DC(threading.Thread):
     def callback_uploader(self, ch, method, properties, body):
         cmd = body.decode()
         param = cmd.split()
-        #print("uploader:", param)
+        print(f'callback_uploader cmd: {cmd} param: {param}')
         if len(param) < 2:
             return
         
@@ -420,6 +431,7 @@ class DC(threading.Thread):
 
     def connect_to_server_ex(self):
         # RabbitMQ connect
+        print(f'conect_to_server_ex self._iam: {self._iam} ---  {self.core_ex} --- {self.myid}')
         self.producer[LOCAL] = MsgMiddleware(self._iam, "localhost", self.myid, self.pwd, self.core_ex)
         self.producer[LOCAL].connect_to_server()
         self.producer[LOCAL].define_producer()
@@ -437,6 +449,7 @@ class DC(threading.Thread):
 
     def connect_to_server_q(self):
         # RabbitMQ connect
+        print(f'conect_to_server_ex self._iam: {self._iam}')
         self.consumer[LOCAL] = MsgMiddleware(self._iam, "localhost", self.myid, self.pwd, self.gui_ex)
         self.consumer[LOCAL].connect_to_server()
         self.consumer[LOCAL].define_consumer(self.gui_q, self.callback)
@@ -496,7 +509,9 @@ class DC(threading.Thread):
                 continue     
 
             param = self.param.split()
-            
+            print(f'CMD_INITIALIZE1: {CMD_INITIALIZE1} CMD_INITIALIZE2: {CMD_INITIALIZE2} CMD_SETDETECTOR: {CMD_SETDETECTOR} CMD_SETRAMPPARAM: {CMD_SETRAMPPARAM} CMD_SETFSPARAM: {CMD_SETFSPARAM} CMD_ACQUIRERAMP: {CMD_ACQUIRERAMP} CMD_ASICLOAD: {CMD_ASICLOAD}')
+            print(f'control_macie: param: {param} ')
+
             if param[0] == CMD_INITIALIZE1:  
                 self.init_publish(int(param[1]))
                 
@@ -884,16 +899,8 @@ class DC(threading.Thread):
         # self.InitBuffer()
 
         # 1. init
-        if self.Init() == MACIE_FAIL:
-            return -1
-
-        # 2. SetGigeTimeout
-        if self.SetGigeTimeout(timeout) == False:
-            return -2
-        
-        # 3. CheckInterfaces
-        if self.CheckInterfaces() == False:
-            return -3
+        if (self.Init() == MACIE_FAIL or self.SetGigeTimeout(timeout) == False or self.CheckInterfaces() == False):
+            return False
         
         # 4. GetHandle
         self.GetHandle()
@@ -903,11 +910,11 @@ class DC(threading.Thread):
         if self.handle != 0:
             self.init1 = True
             return True
-        else:
-            return False
+        return False
 
     
     def init_publish(self, timeout):
+        #if self.Initialize(timeout):
         if self.Initialize(timeout):
             msg = "%s %s %d" % (CMD_INITIALIZE1, self.LibVersion(), self.macieSN)
         else:

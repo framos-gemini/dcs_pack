@@ -8,7 +8,7 @@ Modified on Oct 4, 2023
 @author: hilee
 """
 
-import sys
+import sys, os
 
 import getpass
 user = getpass.getuser()
@@ -21,6 +21,10 @@ try:
 except:
     WORKING_DIR = "/home/%s/" % user
     IAM = user.upper()
+
+IAM = os.environ.get('DC_CORE')
+if (os.environ.get('DC_CORE') == None):
+    IAM = "DCSS"
 
 #FUN_OK = 1
 #IAM = "DCSS"

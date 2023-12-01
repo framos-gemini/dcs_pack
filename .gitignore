@@ -124,3 +124,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+installation/macie_v5.3_centos/
